@@ -65,14 +65,17 @@ const int pinS = 10;                               // Input pin for the switch
 // Control variables
 const int PLAY = 0;
 const int OVER = 1;
+const int CLEARED = 2;
 int     current_level = 0;                         // Current level being played
 int     hero_row = 0;                              // Row in which the hero is currently located inside the hero[] buffer
 long    base_time_input = 0;                       // Time at which the loop for reading the input begins. This is updated everytime the desired target time is achieved.
 long    base_time_shots = 0;                       // Time at which the loop for updating the shots begins. This is updated everytime the desired target time is achieved.
-long    base_time_enemies = 0;
+long    base_time_enemies = 0;                     // Base time for updating the enemies movement
+long    base_time_stage_end = 0;                   // Base time for turning on/off the stage goal or end
 int     target_time_input = 100;                   // Desired target time for reading the input in mili seconds
 int     target_time_shots = 100;                   // Desired target time for updating the shots in mili seconds
 int     target_time_enemies = 1000;
+int     target_time_stage_end = 800;
 boolean unpressed = true;                          // Tells if the switch has been disconnected
 boolean enemies_to_right = true;                   // Tells if the enemies should keep moving to the right or not
 int game_state = PLAY;
@@ -89,15 +92,9 @@ int enemy_shots_left[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the sho
 int enemy_shots_up[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };      // Contains all the shots going up
 int enemy_shots_down[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going down
 int enemy_shots_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };     // Contains all the shots
-int enemies0[8] = {                                // Contains the enemies for level 0
-    B00000000,
-    B00000000,
-    B00011111,
-    B00000000,
-    B00000000,
-    B00011000,
-    B00010000,
-    B00011000
+int stage_ends_row[] = { 0 };                            // Indicates in which row the stage end row is located
+int stage_ends[] = {      
+    B00000001
   };
 int lvl0[] = {                                     // Contains the scenario for level 0
     B00000000,
@@ -143,7 +140,7 @@ void setup() {
   init_hero(hero);
 
   // Set the base time for the first time we enter the loop
-  base_time_input = base_time_shots = base_time_enemies = millis();  
+  base_time_input = base_time_shots = base_time_enemies = base_time_stage_end = millis();  
 }
 
 
@@ -240,6 +237,11 @@ void loop() {
               }   
               if (enemy_shots_all[row]) { 
                 turn_on_columns(enemy_shots_all[row], 250, true);
+              }
+              
+              if ( ( millis() - base_time_stage_end ) >= target_time_stage_end ) {
+                base_time_stage_end = millis();
+                turn_on_columns(stage_ends[current_level], 1000, true);
               }
               
               // Turn off the row 
@@ -377,12 +379,15 @@ void loop() {
             
             // Check Game Over
             // Hero collisions with enemies
-            if ( hero[hero_row] & enemies_left_right[current_level][hero_row] ) {
+            if ( ( hero_row == stage_ends_row[current_level] ) && ( hero[hero_row] & stage_ends[current_level] ) ) {
+              game_state = CLEARED;
+            }
+            else if ( hero[hero_row] & enemies_left_right[current_level][hero_row] ) {
               game_state = OVER;
             }
 
   }
-  else if ( game_state == OVER ) {
+  else if ( game_state == OVER || game_state == CLEARED) {
             for( int i=0; i<8; i++ ){
               // Light a LED
               pinMode( rows[i], OUTPUT );
