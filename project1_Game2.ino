@@ -232,21 +232,56 @@ void loop() {
                 turn_on_columns(enemies_left_right[current_level][row], 100, true);
               }
               
-              // Show the content of shots_all if that row has content
+              // Show the content of shots_all (shots from the hero) if that row has content
               if (shots_all[row]) { 
                 turn_on_columns(shots_all[row], 250, true);
               }   
+              
+              
+              // Show the content of the hero buffer
+              if ( row == hero_row ) {
+                turn_on_columns(hero[hero_row], 3250, true);
+              }
+              
+             // Make enemies shoot
+               // If the hero is in the indicated direction
+                int hero_up = ( hero_row < row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
+                int hero_down = ( hero_row > row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
+                int hero_right = ( hero_row == row ) && ( enemies_left_right[current_level][row] > hero[hero_row] );
+                int hero_left = ( hero_row == row ) && ( enemies_left_right[current_level][row] < hero[hero_row] );
+                
+                // Shoot to the right if the hero is at the right, if there is not already a shot in that direction and if there is not a wall to the right
+                if ( hero_right && !( enemy_shots_right[row] ) && ( ( ( enemies_left_right[current_level][row] >> 1) & stages[current_level][row] ) ^ ( enemies_left_right[current_level][row] >> 1 ) ) ) {    // Check if the bullet ( hero[hero_row] >> 1) collides with the scenario ( stages[current_level][hero_row] ). 
+                  enemy_shots_right[row] |= (enemies_left_right[current_level][row] >> 1);                                                  //   This gives us 1s for the places where collision happens, so we XOR these result with the bullet itself ( hero[hero_row] >> 1 ), 
+                                                                                                                   //   to know if this particular bullet will cause a collision
+                }
+                // Shoot to the left, if there is not a wall to the left
+                if ( hero_left && !( enemy_shots_left[row] ) && ( ( ( (enemies_left_right[current_level][row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[current_level][row] << 1) & B11111111 ) ) ) {
+                  enemy_shots_left[row] |= (enemies_left_right[current_level][row] << 1) & B11111111; 
+                }
+                
+                // Shoot up, , if there is not a wall above
+                if ( hero_up && ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
+                  enemy_shots_up[row - 1] |= enemies_left_right[current_level][row];
+                }
+                // Shoot down, if there is not a wall below
+                if ( hero_down && ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
+                  enemy_shots_down[row + 1] |= enemies_left_right[current_level][row];
+                }
+              
+              // Show the content of enemy_shots_all (shots from the enemies) if that row has content
               if (enemy_shots_all[row]) { 
                 turn_on_columns(enemy_shots_all[row], 250, true);
               }
               
+              // Manage timer and status for the blinking light that indicates the end of the stage
               if ( ( millis() - base_time_stage_end ) >= target_time_stage_end ) {
                 base_time_stage_end = millis();
                 stage_end_status = ~stage_end_status;
               }
               
+              // Show blinking light that indicates the end of the stage
               if ( row == stage_ends_row[current_level] && stage_end_status == 1 ) {
-                
                 turn_on_columns(stage_ends[current_level], 1000, true);
               }
               
@@ -272,13 +307,7 @@ void loop() {
               
             }
             
-            // Show the content of the hero buffer
-            // Turn on the row
-            pinMode( rows[hero_row], OUTPUT );
-            digitalWrite( rows[hero_row], LOW);
-            turn_on_columns(hero[hero_row], 3250, true);
-            // Turn off the row 
-            pinMode( rows[hero_row], INPUT );
+            
           
             // Update shots
             if ( millis() - base_time_shots >= target_time_shots ) {      
@@ -358,29 +387,7 @@ void loop() {
                   }
                 }
                 
-                // Make enemies shoot
-                int hero_up = ( hero_row < row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
-                int hero_down = ( hero_row > row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
-                int hero_right = ( hero_row == row ) && ( enemies_left_right[current_level][row] > hero[hero_row] );
-                int hero_left = ( hero_row == row ) && ( enemies_left_right[current_level][row] < hero[hero_row] );
-
-                // Shoot to the right, if there is not a wall to the right
-                if ( hero_right && ( ( ( enemies_left_right[current_level][row] >> 1) & stages[current_level][row] ) ^ ( enemies_left_right[current_level][row] >> 1 ) ) ) {    // Check if the bullet ( hero[hero_row] >> 1) collides with the scenario ( stages[current_level][hero_row] ). 
-                  enemy_shots_right[row] |= (enemies_left_right[current_level][row] >> 1);                                                  //   This gives us 1s for the places where collision happens, so we XOR these result with the bullet itself ( hero[hero_row] >> 1 ), 
-                                                                                                                   //   to know if this particular bullet will cause a collision
-                }
-                // Shoot to the left, if there is not a wall to the left of the hero
-                if ( hero_left && ( ( ( (enemies_left_right[current_level][row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[current_level][row] << 1) & B11111111 ) ) ) {
-                  enemy_shots_left[row] |= (enemies_left_right[current_level][row] << 1) & B11111111; 
-                }
-                // Shoot up, , if there is not a wall above the hero
-                if ( hero_up && ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
-                  enemy_shots_up[row - 1] |= enemies_left_right[current_level][row];
-                }
-                // Shoot down, if there is not a wall below the hero
-                if ( hero_down && ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
-                  enemy_shots_down[row + 1] |= enemies_left_right[current_level][row];
-                }
+                
             
                 
                 
