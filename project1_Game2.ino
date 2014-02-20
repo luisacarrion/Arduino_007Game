@@ -78,7 +78,7 @@ int     target_time_enemies = 1000;
 int     target_time_stage_end = 800;
 int     stage_end_status = 1;                      // 1 means on; 0 means off.
 boolean unpressed = true;                          // Tells if the switch has been disconnected
-boolean enemies_to_right = true;                   // Tells if the enemies should keep moving to the right or not
+boolean enemies_to_right[8] = { true, true, true, true, true, true, true, true };                   // Tells if the enemies should keep moving to the right or not. There is one for each row of the enemies_left_right buffer
 int game_state = PLAY;
 
 // Image buffers
@@ -115,7 +115,7 @@ int enemies_left_right0[8] = {
     B10000000,
     B00000000,
     B00000000,
-    B00000000,
+    B10000000,
     B00000000
   };
 int* enemies_left_right[8] = { enemies_left_right0 };
@@ -370,14 +370,15 @@ void loop() {
               
               // Move the enemies
               for( int row = 0; row < 8; row++ ){
+                
                 // Move enemies to the right
-                if ( enemies_to_right ) {
+                if ( enemies_to_right[row] ) {
                   // Check collision to the right
                   if ( ( !( enemies_left_right[current_level][row] & B00000001 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] >> 1 ) ) ) {
                     enemies_left_right[current_level][row] >>= 1;
                   }
                   else {
-                    enemies_to_right = false;
+                    enemies_to_right[row] = false;
                     //Check collision to the left
                     if ( (!( enemies_left_right[current_level][row] & B10000000 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] << 1 ) ) ) {
                       enemies_left_right[current_level][row] <<= 1;
@@ -385,13 +386,13 @@ void loop() {
                   }
                 }
                 // Move enemies to the left
-                else if ( !(enemies_to_right) ) {
+                else if ( !(enemies_to_right[row]) ) {
                   //Check collision to the left
                   if ( (!( enemies_left_right[current_level][row] & B10000000 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] << 1 ) ) ) {
                     enemies_left_right[current_level][row] <<= 1;
                   }
                   else {
-                    enemies_to_right = true;
+                    enemies_to_right[row] = true;
                     // Check collision to the right
                     if ( ( !( enemies_left_right[current_level][row] & B00000001 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] >> 1 ) ) ) {
                       enemies_left_right[current_level][row] >>= 1;
