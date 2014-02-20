@@ -76,6 +76,7 @@ int     target_time_input = 100;                   // Desired target time for re
 int     target_time_shots = 100;                   // Desired target time for updating the shots in mili seconds
 int     target_time_enemies = 1000;
 int     target_time_stage_end = 800;
+int     stage_end_status = 1;                      // 1 means on; 0 means off.
 boolean unpressed = true;                          // Tells if the switch has been disconnected
 boolean enemies_to_right = true;                   // Tells if the enemies should keep moving to the right or not
 int game_state = PLAY;
@@ -111,8 +112,8 @@ int enemies_left_right0[8] = {
     B00000000,
     B00000000,
     B00000000,
-    B11000000,
-    B11000000,
+    B00000000,
+    B00000000,
     B00000000,
     B00000000,
     B00000000
@@ -241,6 +242,11 @@ void loop() {
               
               if ( ( millis() - base_time_stage_end ) >= target_time_stage_end ) {
                 base_time_stage_end = millis();
+                stage_end_status = ~stage_end_status;
+              }
+              
+              if ( row == stage_ends_row[current_level] && stage_end_status == 1 ) {
+                
                 turn_on_columns(stage_ends[current_level], 1000, true);
               }
               
