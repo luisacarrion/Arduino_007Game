@@ -112,7 +112,7 @@ int enemies_left_right0[8] = {
     B00000000,
     B00000000,
     B00000000,
-    B00000000,
+    B10000000,
     B00000000,
     B00000000,
     B00000000,
@@ -284,6 +284,7 @@ void loop() {
             if ( millis() - base_time_shots >= target_time_shots ) {      
               base_time_shots = millis();
               
+              // Move shots right, left or up
               for( int row = 0; row < 8; row++ ){      
                     //and con el stage me da la máscara de 1s (q no deben ir) y luego hago un xor de eso
                     // Move right shots one position to the right, but check if the shot hits a wall. If that is the case, then it is eliminated
@@ -306,6 +307,7 @@ void loop() {
                      
               }
               
+              // Move shots down
               for( int row = 7; row >= 0; row-- ){  
                     // Move down shots one position down, but check if the shot hits a wall. If that is the case, then it is eliminated
                     if ( row > 0 ) {
@@ -357,22 +359,26 @@ void loop() {
                 }
                 
                 // Make enemies shoot
+                int hero_up = ( hero_row < row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
+                int hero_down = ( hero_row > row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
+                int hero_right = ( hero_row == row ) && ( enemies_left_right[current_level][row] > hero[hero_row] );
+                int hero_left = ( hero_row == row ) && ( enemies_left_right[current_level][row] < hero[hero_row] );
 
                 // Shoot to the right, if there is not a wall to the right
-                if ( ( ( enemies_left_right[current_level][row] >> 1) & stages[current_level][row] ) ^ ( enemies_left_right[current_level][row] >> 1 ) ) {    // Check if the bullet ( hero[hero_row] >> 1) collides with the scenario ( stages[current_level][hero_row] ). 
+                if ( hero_right && ( ( ( enemies_left_right[current_level][row] >> 1) & stages[current_level][row] ) ^ ( enemies_left_right[current_level][row] >> 1 ) ) ) {    // Check if the bullet ( hero[hero_row] >> 1) collides with the scenario ( stages[current_level][hero_row] ). 
                   enemy_shots_right[row] |= (enemies_left_right[current_level][row] >> 1);                                                  //   This gives us 1s for the places where collision happens, so we XOR these result with the bullet itself ( hero[hero_row] >> 1 ), 
                                                                                                                    //   to know if this particular bullet will cause a collision
                 }
                 // Shoot to the left, if there is not a wall to the left of the hero
-                if ( ( ( (enemies_left_right[current_level][row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[current_level][row] << 1) & B11111111 ) ) {
+                if ( hero_left && ( ( ( (enemies_left_right[current_level][row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[current_level][row] << 1) & B11111111 ) ) ) {
                   enemy_shots_left[row] |= (enemies_left_right[current_level][row] << 1) & B11111111; 
                 }
                 // Shoot up, , if there is not a wall above the hero
-                if ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) {
+                if ( hero_up && ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
                   enemy_shots_up[row - 1] |= enemies_left_right[current_level][row];
                 }
                 // Shoot down, if there is not a wall below the hero
-                if ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) {
+                if ( hero_down && ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
                   enemy_shots_down[row + 1] |= enemies_left_right[current_level][row];
                 }
             
@@ -388,7 +394,8 @@ void loop() {
             if ( ( hero_row == stage_ends_row[current_level] ) && ( hero[hero_row] & stage_ends[current_level] ) ) {
               game_state = CLEARED;
             }
-            else if ( hero[hero_row] & enemies_left_right[current_level][hero_row] ) {
+            // If the hero touches an enemy, or is hit by an enemy shot, it's game over
+            else if ( ( hero[hero_row] & enemies_left_right[current_level][hero_row] ) || ( enemy_shots_all[hero_row] & hero[hero_row] ) ) {
               game_state = OVER;
             }
 
