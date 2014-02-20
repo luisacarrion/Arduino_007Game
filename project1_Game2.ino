@@ -260,12 +260,24 @@ void loop() {
                   enemy_shots_left[row] |= (enemies_left_right[current_level][row] << 1) & B11111111; 
                 }
                 
+                int shots_up_exist = 0;
+                int shots_down_exist = 0;
+                // See if there is an existing shot up or down, going towards the hero
+                for ( int j = 0; j < 8; j++ ) {
+                  if ( j > hero_row ) {
+                    shots_up_exist |= ( enemy_shots_up[j] & hero[hero_row] );
+                  }
+                  else if ( j < hero_row ) {
+                    shots_down_exist |= ( enemy_shots_down[j] & hero[hero_row] );
+                  }
+                }
+                
                 // Shoot up, , if there is not a wall above
-                if ( hero_up && ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
+                if ( hero_up && !( shots_up_exist ) && ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
                   enemy_shots_up[row - 1] |= enemies_left_right[current_level][row];
                 }
                 // Shoot down, if there is not a wall below
-                if ( hero_down && ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
+                if ( hero_down && !( shots_down_exist ) && ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
                   enemy_shots_down[row + 1] |= enemies_left_right[current_level][row];
                 }
               
