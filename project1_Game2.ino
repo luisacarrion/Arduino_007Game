@@ -131,10 +131,10 @@ int enemies_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 // Code for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
 //An array holding the powers of 2 these are used as bit masks when calculating what to display
 const int powers[] = {1,2,4,8,16,32,64,128};
-int speed = 10; //number of times to repeat each frame
+int speed = 20; //number of times to repeat each frame
 int pauseDelay = 500;  //microseconds to leave each row  on before moving to the next
 
-char requestString[] = " 007> START ";  //The string to display
+char requestString[] = "ARST07";  //The string to display
                                            //to change the message in code you right yourself simply 
                                            //change this data and reset index and offset to 0
 //Variables used for scrolling (both start at 0
@@ -152,62 +152,63 @@ byte data[] = {0,0,0,0,0,0,0,0};
 
 //The alphabet
 //Each Charachter is an 8 x 7 bitmap where 1 is on and 0 if off
-const int _A[] = {B0001000,
-                  B0010100,
-                  B0100010,
-                  B1000001,
-                  B1111111,
-                  B1000001,
-                  B1000001,
+const int _A[] = {B0000000,
+                  B0110011,
+                  B1010101,
+                  B1010101,
+                  B1010101,
+                  B1100110,
+                  B0000000,
                   B0000000};
-const int _R[] = {B1111110,
-                  B0100001,
-                  B0100001,
-                  B0101110,
-                  B0100100,
-                  B0100010,
-                  B0100001,
-                  B0000000};
-
-const int _S[] = {B01111,
-                  B10000,
-                  B10000,
-                  B01110,
-                  B00001,
-                  B00001,
-                  B11110,
-                  B00000};
-
-const int _T[] = {B11111,
-                  B00010,
-                  B00010,
-                  B00010,
-                  B00010,
-                  B00010,
-                  B00010,
-                  B00000};
-
-const int _0[] = {B0011110,
-                  B0100001,
-                  B1000001,
-                  B1000001,
-                  B1000001,
-                  B1000010,
-                  B0111100,
-                  B0000000};
-
-const int _7[] = {B0111111,
-                  B0000010,
-                  B0000101,
+                  
+const int _R[] = {B0000000,
+                  B1110111,
                   B0010111,
-                  B0101001,
-                  B0101111,
-                  B0100000,
+                  B0100010,
+                  B1001100,
+                  B1000000,
+                  B0000000,
                   B0000000};
 
-const int _PISTOL[] = {B1111111,
-                  B1111000,
-                  B111000,
+const int _S[] = {B0000000,
+                  B1100111,
+                  B0000100,
+                  B0000111,
+                  B0000001,
+                  B0000111,
+                  B0000000,
+                  B0000000};
+
+const int _T[] = {B0000000,
+                  B1110111,
+                  B0100101,
+                  B0100111,
+                  B0100101,
+                  B0100101,
+                  B0000000,
+                  B0000000};
+
+const int _0[] = {B0000000,
+                  B1100111,
+                  B1010010,
+                  B1100010,
+                  B1010010,
+                  B1010010,
+                  B0000000,
+                  B0000000};
+
+const int _7[] = {B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000};
+
+const int _PISTOL[] = {B0000000,
+                  B0000000,
+                  B0000000,
                   B0000000,
                   B0000000,
                   B0000000,
