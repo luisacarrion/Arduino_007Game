@@ -131,10 +131,10 @@ int enemies_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 // Code for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
 //An array holding the powers of 2 these are used as bit masks when calculating what to display
 const int powers[] = {1,2,4,8,16,32,64,128};
-int speed = 20; //number of times to repeat each frame
+int speed = 15; //number of times to repeat each frame
 int pauseDelay = 500;  //microseconds to leave each row  on before moving to the next
 
-char requestString[] = "ARST07";  //The string to display
+char requestString[] = " ARST07 ";  //The string to display
                                            //to change the message in code you right yourself simply 
                                            //change this data and reset index and offset to 0
 //Variables used for scrolling (both start at 0
@@ -152,59 +152,59 @@ byte data[] = {0,0,0,0,0,0,0,0};
 
 //The alphabet
 //Each Charachter is an 8 x 7 bitmap where 1 is on and 0 if off
-const int _A[] = {B0000000,
-                  B0110011,
-                  B1010101,
-                  B1010101,
-                  B1010101,
-                  B1100110,
-                  B0000000,
-                  B0000000};
+const int _A[] = {B00000000,
+                  B00110011,
+                  B01010101,
+                  B01010101,
+                  B01010101,
+                  B01100110,
+                  B00000000,
+                  B00000000};
                   
-const int _R[] = {B0000000,
-                  B1110111,
-                  B0010111,
-                  B0100010,
-                  B1001100,
-                  B1000000,
-                  B0000000,
-                  B0000000};
+const int _R[] = {B00000000,
+                  B01110111,
+                  B00010111,
+                  B00100010,
+                  B01001100,
+                  B01000000,
+                  B00000000,
+                  B00000000};
 
-const int _S[] = {B0000000,
-                  B1100111,
-                  B0000100,
-                  B0000111,
-                  B0000001,
-                  B0000111,
-                  B0000000,
-                  B0000000};
+const int _S[] = {B00000000,
+                  B11100111,
+                  B00000100,
+                  B00000111,
+                  B00000001,
+                  B00000111,
+                  B00000000,
+                  B00000000};
 
-const int _T[] = {B0000000,
-                  B1110111,
-                  B0100101,
-                  B0100111,
-                  B0100101,
-                  B0100101,
-                  B0000000,
-                  B0000000};
+const int _T[] = {B00000000,
+                  B01110111,
+                  B00100101,
+                  B00100111,
+                  B00100101,
+                  B00100101,
+                  B00000000,
+                  B00000000};
 
-const int _0[] = {B0000000,
-                  B1100111,
-                  B1010010,
-                  B1100010,
-                  B1010010,
-                  B1010010,
-                  B0000000,
-                  B0000000};
+const int _0[] = {B00000000,
+                  B01100111,
+                  B01010010,
+                  B01100010,
+                  B01010010,
+                  B01010010,
+                  B00000000,
+                  B00000000};
 
-const int _7[] = {B0000000,
-                  B0000000,
-                  B0000000,
-                  B0000000,
-                  B0000000,
-                  B0000000,
-                  B0000000,
-                  B0000000};
+const int _7[] = {B00000000,
+                  B00000000,
+                  B00000000,
+                  B00011000,
+                  B00011000,
+                  B00000000,
+                  B00000000,
+                  B00000000};
 
 const int _PISTOL[] = {B0000000,
                   B0000000,
@@ -584,13 +584,7 @@ void loop() {
     loadSprite();
     showSprite(speed);
     
-    // Read input from the switch
-    int valS = digitalRead(pinS);
-    
-    // Start game when switch is pressed
-    if ( valS == HIGH ) {
-      game_state = PLAY;
-    }
+
       
 //    for( int i=0; i<8; i++ ){
 //      // Light a LED
@@ -751,6 +745,15 @@ void showSprite(int speed2){
       turn_on_columns(data[row], pauseDelay, true);
       // Turn off the row 
       pinMode( rows[row], INPUT );
+      
+        // Read input from the switch
+        int valS = digitalRead(pinS);
+        
+        // Start game when switch is pressed
+        if ( valS == HIGH ) {
+          game_state = PLAY;
+          break;
+        }
     
     }
   }
