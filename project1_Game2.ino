@@ -81,7 +81,7 @@ int     target_time_stage_end = 800;
 int     stage_end_status = 1;                      // 1 means on; 0 means off.
 boolean unpressed = true;                          // Tells if the switch has been disconnected
 boolean enemies_to_right[8] = { true, true, true, true, true, true, true, true };                   // Tells if the enemies should keep moving to the right or not. There is one for each row of the enemies_left_right buffer
-int game_state = PLAY;
+int game_state = OVER;
 
 // Image buffers
 int hero[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };          // Contains the position of the hero
@@ -122,28 +122,7 @@ int lvl1[] = {                                     // Contains the scenario for 
   };
 
 int* stages[8] = { lvl0, lvl1 };                         // Contains all the scenarios for the levels  
-int enemies_left_right0[8] = {                    
-    B00000000,
-    B00000001,
-    B00000000,
-    B10000000,
-    B00000000,
-    B00000000,
-    B00000000,
-    B00000000
-  };
-int enemies_left_right1[8] = {                    
-    B00000000,
-    B00000000,
-    B00100000,
-    B00000000,
-    B00000000,
-    B00000000,
-    B00000000,
-    B10000000
-  };
-
-int* enemies_left_right[8] = { enemies_left_right0, enemies_left_right1 };
+int enemies_left_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 int enemies_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
@@ -164,6 +143,8 @@ void setup() {
   
   // Load initial position of the hero
   init_hero(hero, current_level);
+  // Load initial position of enemies
+  init_enemies_left_right(enemies_left_right, current_level);
 
   // Set the base time for the first time we enter the loop
   base_time_input = base_time_shots = base_time_enemies = base_time_stage_end = millis();  
@@ -253,8 +234,8 @@ void loop() {
               }
               
               // Show the content of the stage for 100 microseconds if that row has content
-              if (enemies_left_right[current_level][row]) { 
-                turn_on_columns(enemies_left_right[current_level][row], 100, true);
+              if (enemies_left_right[row]) { 
+                turn_on_columns(enemies_left_right[row], 100, true);
               }
               
               // Show the content of shots_all (shots from the hero) if that row has content
@@ -270,19 +251,19 @@ void loop() {
               
              // Make enemies shoot
                // If the hero is in the indicated direction
-                int hero_up = ( hero_row < row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
-                int hero_down = ( hero_row > row ) && ( enemies_left_right[current_level][row] & hero[hero_row] );
-                int hero_right = ( hero_row == row ) && ( enemies_left_right[current_level][row] > hero[hero_row] );
-                int hero_left = ( hero_row == row ) && ( enemies_left_right[current_level][row] < hero[hero_row] );
+                int hero_up = ( hero_row < row ) && ( enemies_left_right[row] & hero[hero_row] );
+                int hero_down = ( hero_row > row ) && ( enemies_left_right[row] & hero[hero_row] );
+                int hero_right = ( hero_row == row ) && ( enemies_left_right[row] > hero[hero_row] );
+                int hero_left = ( hero_row == row ) && ( enemies_left_right[row] < hero[hero_row] );
                 
                 // Shoot to the right if the hero is at the right, if there is not already a shot in that direction and if there is not a wall to the right
-                if ( hero_right && !( enemy_shots_right[row] ) && ( ( ( enemies_left_right[current_level][row] >> 1) & stages[current_level][row] ) ^ ( enemies_left_right[current_level][row] >> 1 ) ) ) {    // Check if the bullet ( hero[hero_row] >> 1) collides with the scenario ( stages[current_level][hero_row] ). 
-                  enemy_shots_right[row] |= (enemies_left_right[current_level][row] >> 1);                                                  //   This gives us 1s for the places where collision happens, so we XOR these result with the bullet itself ( hero[hero_row] >> 1 ), 
+                if ( hero_right && !( enemy_shots_right[row] ) && ( ( ( enemies_left_right[row] >> 1) & stages[current_level][row] ) ^ ( enemies_left_right[row] >> 1 ) ) ) {    // Check if the bullet ( hero[hero_row] >> 1) collides with the scenario ( stages[current_level][hero_row] ). 
+                  enemy_shots_right[row] |= (enemies_left_right[row] >> 1);                                                  //   This gives us 1s for the places where collision happens, so we XOR these result with the bullet itself ( hero[hero_row] >> 1 ), 
                                                                                                                    //   to know if this particular bullet will cause a collision
                 }
                 // Shoot to the left, if there is not a wall to the left
-                if ( hero_left && !( enemy_shots_left[row] ) && ( ( ( (enemies_left_right[current_level][row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[current_level][row] << 1) & B11111111 ) ) ) {
-                  enemy_shots_left[row] |= (enemies_left_right[current_level][row] << 1) & B11111111; 
+                if ( hero_left && !( enemy_shots_left[row] ) && ( ( ( (enemies_left_right[row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[row] << 1) & B11111111 ) ) ) {
+                  enemy_shots_left[row] |= (enemies_left_right[row] << 1) & B11111111; 
                 }
                 
                 int shots_up_exist = 0;
@@ -298,12 +279,12 @@ void loop() {
                 }
                 
                 // Shoot up, , if there is not a wall above
-                if ( hero_up && !( shots_up_exist ) && ( !( row == 0 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row - 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
-                  enemy_shots_up[row - 1] |= enemies_left_right[current_level][row];
+                if ( hero_up && !( shots_up_exist ) && ( !( row == 0 ) && ( ( enemies_left_right[row] & stages[current_level][row - 1] ) ^ enemies_left_right[row] ) ) ) {
+                  enemy_shots_up[row - 1] |= enemies_left_right[row];
                 }
                 // Shoot down, if there is not a wall below
-                if ( hero_down && !( shots_down_exist ) && ( !( row == 7 ) && ( ( enemies_left_right[current_level][row] & stages[current_level][row + 1] ) ^ enemies_left_right[current_level][row] ) ) ) {
-                  enemy_shots_down[row + 1] |= enemies_left_right[current_level][row];
+                if ( hero_down && !( shots_down_exist ) && ( !( row == 7 ) && ( ( enemies_left_right[row] & stages[current_level][row + 1] ) ^ enemies_left_right[row] ) ) ) {
+                  enemy_shots_down[row + 1] |= enemies_left_right[row];
                 }
               
               // Show the content of enemy_shots_all (shots from the enemies) if that row has content
@@ -326,20 +307,20 @@ void loop() {
               pinMode( rows[row], INPUT );
               
               // Check if it kills an enemy
-              int hits = enemies_left_right[current_level][row] & shots_right[row];                      // find the enemies hit 
-              enemies_left_right[current_level][row] = hits ^ enemies_left_right[current_level][row];    // keep only those not hit
+              int hits = enemies_left_right[row] & shots_right[row];                      // find the enemies hit 
+              enemies_left_right[row] = hits ^ enemies_left_right[row];    // keep only those not hit
               shots_right[row] = hits ^ shots_right[row];
               
-              hits = enemies_left_right[current_level][row] & shots_left[row];
-              enemies_left_right[current_level][row] = hits ^ enemies_left_right[current_level][row];
+              hits = enemies_left_right[row] & shots_left[row];
+              enemies_left_right[row] = hits ^ enemies_left_right[row];
               shots_left[row] = hits ^ shots_left[row];
               
-              hits = enemies_left_right[current_level][row] & shots_up[row];
-              enemies_left_right[current_level][row] = hits ^ enemies_left_right[current_level][row];
+              hits = enemies_left_right[row] & shots_up[row];
+              enemies_left_right[row] = hits ^ enemies_left_right[row];
               shots_up[row] = hits ^ shots_up[row];
               
-              hits = enemies_left_right[current_level][row] & shots_down[row];
-              enemies_left_right[current_level][row] = hits ^ enemies_left_right[current_level][row];
+              hits = enemies_left_right[row] & shots_down[row];
+              enemies_left_right[row] = hits ^ enemies_left_right[row];
               shots_down[row] = hits ^ shots_down[row];
               
             }
@@ -399,28 +380,28 @@ void loop() {
                 // Move enemies to the right
                 if ( enemies_to_right[row] ) {
                   // Check collision to the right
-                  if ( ( !( enemies_left_right[current_level][row] & B00000001 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] >> 1 ) ) ) {
-                    enemies_left_right[current_level][row] >>= 1;
+                  if ( ( !( enemies_left_right[row] & B00000001 ) && !( stages[current_level][row] &  enemies_left_right[row] >> 1 ) ) ) {
+                    enemies_left_right[row] >>= 1;
                   }
                   else {
                     enemies_to_right[row] = false;
                     //Check collision to the left
-                    if ( (!( enemies_left_right[current_level][row] & B10000000 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] << 1 ) ) ) {
-                      enemies_left_right[current_level][row] <<= 1;
+                    if ( (!( enemies_left_right[row] & B10000000 ) && !( stages[current_level][row] &  enemies_left_right[row] << 1 ) ) ) {
+                      enemies_left_right[row] <<= 1;
                     } 
                   }
                 }
                 // Move enemies to the left
                 else if ( !(enemies_to_right[row]) ) {
                   //Check collision to the left
-                  if ( (!( enemies_left_right[current_level][row] & B10000000 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] << 1 ) ) ) {
-                    enemies_left_right[current_level][row] <<= 1;
+                  if ( (!( enemies_left_right[row] & B10000000 ) && !( stages[current_level][row] &  enemies_left_right[row] << 1 ) ) ) {
+                    enemies_left_right[row] <<= 1;
                   }
                   else {
                     enemies_to_right[row] = true;
                     // Check collision to the right
-                    if ( ( !( enemies_left_right[current_level][row] & B00000001 ) && !( stages[current_level][row] &  enemies_left_right[current_level][row] >> 1 ) ) ) {
-                      enemies_left_right[current_level][row] >>= 1;
+                    if ( ( !( enemies_left_right[row] & B00000001 ) && !( stages[current_level][row] &  enemies_left_right[row] >> 1 ) ) ) {
+                      enemies_left_right[row] >>= 1;
                     }
                   }
                 }
@@ -445,10 +426,11 @@ void loop() {
               }
             }
             // If the hero touches an enemy, or is hit by an enemy shot, it's game over
-            else if ( ( hero[hero_row] & enemies_left_right[current_level][hero_row] ) || ( enemy_shots_all[hero_row] & hero[hero_row] ) ) {
+            else if ( ( hero[hero_row] & enemies_left_right[hero_row] ) || ( enemy_shots_all[hero_row] & hero[hero_row] ) ) {
               if ( lives > 0 ) {
                 lives--;
                 init_hero(hero, current_level);
+                init_enemies_left_right(enemies_left_right, current_level);
     
                 // Initialize game state arrays
                 for ( int i = 0; i < 8; i++ ) {
@@ -475,6 +457,7 @@ void loop() {
     lives = 3;
     current_level++;
     init_hero(hero, current_level);
+    init_enemies_left_right(enemies_left_right, current_level);
     
     // Initialize game state arrays
     for ( int i = 0; i < 8; i++ ) {
@@ -493,16 +476,28 @@ void loop() {
     game_state = PLAY;
   }
   else if ( game_state == OVER || game_state == ENDED ) {
-            for( int i=0; i<8; i++ ){
-              // Light a LED
-              pinMode( rows[i], OUTPUT );
-              digitalWrite( rows[i], LOW);
-              digitalWrite( cols[i], HIGH);
-              delay(100);
-              // Turn the LED off
-              digitalWrite( cols[i], LOW );
-              pinMode( rows[i], INPUT );
-            }
+    
+    for( int i=0; i<8; i++ ){
+      // Light a LED
+      pinMode( rows[i], OUTPUT );
+      digitalWrite( rows[i], LOW);
+      digitalWrite( cols[i], HIGH);
+      delay(100);
+      // Turn the LED off
+      digitalWrite( cols[i], LOW );
+      pinMode( rows[i], INPUT );
+      
+      // Read input from the switch
+      int valS = digitalRead(pinS);
+      
+      // Start game when switch is pressed
+      if ( valS == HIGH ) {
+        game_state = PLAY;
+        break;
+      }
+    }
+    
+
              
   }
  
@@ -552,6 +547,29 @@ void init_hero(int buf[], int level) {
     buf[7] = B00000000;
     
     hero_row = 6;
+  }
+}
+
+void init_enemies_left_right(int buf[], int level) {
+  if ( level == 0 ) {
+    buf[0] = B00000000;
+    buf[1] = B00000001;
+    buf[2] = B00000000;
+    buf[3] = B10000000;
+    buf[4] = B00000000;
+    buf[5] = B00000000;
+    buf[6] = B00000000;
+    buf[7] = B00000000;
+  }
+  else if ( level == 1 ) {
+    buf[0] = B00000000;
+    buf[1] = B00000000;
+    buf[2] = B00100000;
+    buf[3] = B00000000;
+    buf[4] = B00000000;
+    buf[5] = B00000000;
+    buf[6] = B00000000;
+    buf[7] = B10000000;
   }
 }
 
