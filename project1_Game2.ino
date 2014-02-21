@@ -10,6 +10,7 @@
   
   ACKNOWLEDGEMENTS:
     - Eiji Hayashi's code (http://www.cs.cmu.edu/~ehayashi/projects/lasercommand/) was used as an example for building this project.
+    - The code for the scrolling text was found here: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt
     - The operations for reverting bits was found in  Bit Twiddling Hacks, By Sean Eron Anderson: http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64BitsDiv
   
   ---------------------------------------------------------------------------------------------------------------------------------
@@ -124,6 +125,108 @@ int lvl1[] = {                                     // Contains the scenario for 
 int* stages[8] = { lvl0, lvl1 };                         // Contains all the scenarios for the levels  
 int enemies_left_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 int enemies_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+
+
+// Code for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
+//An array holding the powers of 2 these are used as bit masks when calculating what to display
+const int powers[] = {1,2,4,8,16,32,64,128};
+int speed = 10; //number of times to repeat each frame
+int pauseDelay = 500;  //microseconds to leave each row  on before moving to the next
+
+char requestString[] = " 007> START ";  //The string to display
+                                           //to change the message in code you right yourself simply 
+                                           //change this data and reset index and offset to 0
+//Variables used for scrolling (both start at 0
+int index = 0;  //this is the current charachter in the string being displayed
+int offset = 0; //this is how many columns it is offset by
+//Constants defining each charachters position in an array of integer arrays
+//Letters
+const int A = 0;  const int R = 1; const int S = 2; const int T = 3; const int ZERO = 4;
+const int SEVEN = 5; const int PISTOL = 6; const int SPACE = 7;
+
+//The array used to hold a bitmap of the display 
+//(if you wish to do something other than scrolling marque change the data in this
+//variable then display)
+byte data[] = {0,0,0,0,0,0,0,0};        
+
+//The alphabet
+//Each Charachter is an 8 x 7 bitmap where 1 is on and 0 if off
+const int _A[] = {B0001000,
+                  B0010100,
+                  B0100010,
+                  B1000001,
+                  B1111111,
+                  B1000001,
+                  B1000001,
+                  B0000000};
+const int _R[] = {B1111110,
+                  B0100001,
+                  B0100001,
+                  B0101110,
+                  B0100100,
+                  B0100010,
+                  B0100001,
+                  B0000000};
+
+const int _S[] = {B01111,
+                  B10000,
+                  B10000,
+                  B01110,
+                  B00001,
+                  B00001,
+                  B11110,
+                  B00000};
+
+const int _T[] = {B11111,
+                  B00010,
+                  B00010,
+                  B00010,
+                  B00010,
+                  B00010,
+                  B00010,
+                  B00000};
+
+const int _0[] = {B0011110,
+                  B0100001,
+                  B1000001,
+                  B1000001,
+                  B1000001,
+                  B1000010,
+                  B0111100,
+                  B0000000};
+
+const int _7[] = {B0111111,
+                  B0000010,
+                  B0000101,
+                  B0010111,
+                  B0101001,
+                  B0101111,
+                  B0100000,
+                  B0000000};
+
+const int _PISTOL[] = {B1111111,
+                  B1111000,
+                  B111000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000};
+
+const int __[] = {B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000,
+                  B0000000};
+//Load the bitmap charachters into an array (each charachters position corresponds to its previously defined index (ie _A (a's bitmap) 
+//is at index 0 and A = 0 so letters[A] will return the 'A' bitmap)
+const int* letters[] = {_A,_R,_S,_T, _0, _7, _PISTOL,__};
+
+// End of Code for the scrolling text
 
 
 // Initializization code
@@ -477,25 +580,36 @@ void loop() {
   }
   else if ( game_state == OVER || game_state == ENDED ) {
     
-    for( int i=0; i<8; i++ ){
-      // Light a LED
-      pinMode( rows[i], OUTPUT );
-      digitalWrite( rows[i], LOW);
-      digitalWrite( cols[i], HIGH);
-      delay(100);
-      // Turn the LED off
-      digitalWrite( cols[i], LOW );
-      pinMode( rows[i], INPUT );
-      
-      // Read input from the switch
-      int valS = digitalRead(pinS);
-      
-      // Start game when switch is pressed
-      if ( valS == HIGH ) {
-        game_state = PLAY;
-        break;
-      }
+    loadSprite();
+    showSprite(speed);
+    
+    // Read input from the switch
+    int valS = digitalRead(pinS);
+    
+    // Start game when switch is pressed
+    if ( valS == HIGH ) {
+      game_state = PLAY;
     }
+      
+//    for( int i=0; i<8; i++ ){
+//      // Light a LED
+//      pinMode( rows[i], OUTPUT );
+//      digitalWrite( rows[i], LOW);
+//      digitalWrite( cols[i], HIGH);
+//      delay(100);
+//      // Turn the LED off
+//      digitalWrite( cols[i], LOW );
+//      pinMode( rows[i], INPUT );
+//      
+//      // Read input from the switch
+//      int valS = digitalRead(pinS);
+//      
+//      // Start game when switch is pressed
+//      if ( valS == HIGH ) {
+//        game_state = PLAY;
+//        break;
+//      }
+//    }
     
 
              
@@ -605,3 +719,120 @@ void toggle(int buf[]) {
   buf[6] = buf[6] ^ B11111111;
   buf[7] = buf[7] ^ B11111111;
 }
+
+
+// Code for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
+
+//Loads the current scroll state frame into the data[] display array
+void loadSprite(){
+  int currentChar = getChar(requestString[index]);
+  int nextChar = getChar(requestString[index+1]);
+  
+  for(int row=0; row < 8; row++){                    //iterate through each row
+    data[row] = 0;                                   //reset the row we're working on
+    for(int column=0; column < 8; column++){         //iterate through each column
+     data[row] = data[row] + ((powers[column] & (letters[currentChar][row] << offset)));   //loads the current charachter offset by offset pixels 
+     data[row] = data[row] + (powers[column] & (letters[nextChar][row] >> (8-offset) ));   //loads the next charachter offset by offset pixels
+    }
+  }
+  offset++;                                          //increment the offset by one row
+  if(offset==8){offset = 0; index++; if(index==sizeof(requestString)-2){index=0;}}         //if offset is 8 load the next charachter pair for the next time through
+}
+
+void showSprite(int speed2){  
+  for(int iii = 0; iii < speed2; iii++){
+    for( int row = 0; row < 8; row++ ){
+    
+      // Turn on the row
+      pinMode( rows[row], OUTPUT );
+      digitalWrite( rows[row], LOW);
+      // Show the content of the message buffer
+      turn_on_columns(data[row], pauseDelay, true);
+      // Turn off the row 
+      pinMode( rows[row], INPUT );
+    
+    }
+  }
+  
+  //    for( int i=0; i<8; i++ ){
+//      // Light a LED
+//      pinMode( rows[i], OUTPUT );
+//      digitalWrite( rows[i], LOW);
+//      digitalWrite( cols[i], HIGH);
+//      delay(100);
+//      // Turn the LED off
+//      digitalWrite( cols[i], LOW );
+//      pinMode( rows[i], INPUT );
+//      
+//      // Read input from the switch
+//      int valS = digitalRead(pinS);
+//      
+//      // Start game when switch is pressed
+//      if ( valS == HIGH ) {
+//        game_state = PLAY;
+//        break;
+//      }
+//    }
+  
+  
+//  
+// for(int iii = 0; iii < speed2; iii++){                 //show the current frame speed2 times
+//    for(int column = 0; column < 8; column++){            //iterate through each column
+//    
+//       // Turn on the column
+//       
+//       
+//        
+//       for(int i = 0; i < 8; i++){           
+//           pinMode( rows[i], OUTPUT );     
+//           digitalWrite(rows[i], LOW);                      //turn off all row pins  
+//       }
+//       
+//       for(int i = 0; i < 8; i++) { //Set only the one pin
+//         //turns the current column on
+//         if ( i == column ) {     
+//           digitalWrite(cols[i], LOW);
+//         }  
+//         //turns the rest of the rows off
+//         else {                
+//           digitalWrite(colA[i], HIGH); 
+//         }
+//       }
+//    
+//       for(int row = 0; row < 8; row++){                    //iterate through each pixel in the current column
+//          int bit = (data[column] >> row) & 1;
+//          if ( bit == 1 ) { 
+//             digitalWrite(rowA[row], HIGH);                   //if the bit in the data array is set turn the LED on
+//          }
+//       }
+//       
+//       delayMicroseconds(pauseDelay);                       //leave the column on for pauseDelay microseconds (too high a delay causes flicker)
+//    }
+// }
+}
+
+//returns the index of a given charachter
+//for converting from a string to a lookup in our array of charachter bitmaps
+int getChar(char charachter){
+ int returnValue = ZERO;
+ switch(charachter){
+  case 'A': returnValue = A; break;
+  case 'a': returnValue = A; break;
+  case 'R': returnValue = R; break;
+  case 'r': returnValue = R; break;
+  case 'S': returnValue = S; break;
+  case 's': returnValue = S; break;
+  case 'T': returnValue = T; break;
+  case 't': returnValue = T; break;
+  case '0': returnValue = ZERO; break;
+  case '7': returnValue = SEVEN; break;
+  case '>': returnValue = PISTOL; break;
+  case ' ': returnValue = SPACE; break;
+   
+  }
+  return returnValue;
+}
+
+
+
+// End of Code for the scrolling text
