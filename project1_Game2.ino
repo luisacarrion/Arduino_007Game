@@ -66,7 +66,9 @@ const int pinS = 10;                               // Input pin for the switch
 const int PLAY = 0;
 const int OVER = 1;
 const int CLEARED = 2;
+const int ENDED = 3;
 int     current_level = 0;                         // Current level being played
+int     lives = 3;
 int     hero_row = 0;                              // Row in which the hero is currently located inside the hero[] buffer
 long    base_time_input = 0;                       // Time at which the loop for reading the input begins. This is updated everytime the desired target time is achieved.
 long    base_time_shots = 0;                       // Time at which the loop for updating the shots begins. This is updated everytime the desired target time is achieved.
@@ -93,8 +95,9 @@ int enemy_shots_left[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the sho
 int enemy_shots_up[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };      // Contains all the shots going up
 int enemy_shots_down[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going down
 int enemy_shots_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };     // Contains all the shots
-int stage_ends_row[] = { 0 };                            // Indicates in which row the stage end row is located
+int stage_ends_row[] = { 0, 0 };                            // Indicates in which row the stage end row is located
 int stage_ends[] = {      
+    B00000001,
     B00000001
   };
 int lvl0[] = {                                     // Contains the scenario for level 0
@@ -107,18 +110,40 @@ int lvl0[] = {                                     // Contains the scenario for 
     B00010000,
     B00011000
   };
-int* stages[8] = { lvl0 };                         // Contains all the scenarios for the levels  
-int enemies_left_right0[8] = {                    
+int lvl1[] = {                                     // Contains the scenario for level 0
     B00000000,
+    B00011111,
     B00000000,
-    B00000000,
-    B10000000,
-    B00000000,
-    B00000000,
-    B10000000,
+    B00000100,
+    B00000100,
+    B00000110,
+    B00000100,
     B00000000
   };
-int* enemies_left_right[8] = { enemies_left_right0 };
+
+int* stages[8] = { lvl0, lvl1 };                         // Contains all the scenarios for the levels  
+int enemies_left_right0[8] = {                    
+    B00000000,
+    B00000001,
+    B00000000,
+    B10000000,
+    B00000000,
+    B00000000,
+    B00000000,
+    B00000000
+  };
+int enemies_left_right1[8] = {                    
+    B00000000,
+    B00000000,
+    B00100000,
+    B00000000,
+    B00000000,
+    B00000000,
+    B00000000,
+    B10000000
+  };
+
+int* enemies_left_right[8] = { enemies_left_right0, enemies_left_right1 };
 int enemies_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
@@ -138,7 +163,7 @@ void setup() {
   PORTB &=  ~B00000011; // Set cols 6 and 7 as LOW
   
   // Load initial position of the hero
-  init_hero(hero);
+  init_hero(hero, current_level);
 
   // Set the base time for the first time we enter the loop
   base_time_input = base_time_shots = base_time_enemies = base_time_stage_end = millis();  
@@ -410,17 +435,64 @@ void loop() {
             }
             
             // Check Game Over
-            // Hero collisions with enemies
+            // If the hero reaches the point where the stage ends, then the level is cleared
             if ( ( hero_row == stage_ends_row[current_level] ) && ( hero[hero_row] & stage_ends[current_level] ) ) {
-              game_state = CLEARED;
+              if ( current_level < 1 ) {
+                game_state = CLEARED;
+              }
+              else {
+                game_state = ENDED;
+              }
             }
             // If the hero touches an enemy, or is hit by an enemy shot, it's game over
             else if ( ( hero[hero_row] & enemies_left_right[current_level][hero_row] ) || ( enemy_shots_all[hero_row] & hero[hero_row] ) ) {
-              game_state = OVER;
+              if ( lives > 0 ) {
+                lives--;
+                init_hero(hero, current_level);
+    
+                // Initialize game state arrays
+                for ( int i = 0; i < 8; i++ ) {
+                  shots_right[i] = 0;
+                  shots_left[i] = 0;
+                  shots_up[i] = 0;
+                  shots_down[i] = 0;
+                  shots_all[i] = 0;
+                  enemy_shots_right[i] = 0;
+                  enemy_shots_left[i] = 0;
+                  enemy_shots_up[i] = 0;
+                  enemy_shots_down[i] = 0;
+                  enemy_shots_all[i] = 0;
+                }
+              }
+              else {
+                game_state = OVER;
+              }
+              
             }
 
   }
-  else if ( game_state == OVER || game_state == CLEARED) {
+  else if ( game_state == CLEARED ) {
+    lives = 3;
+    current_level++;
+    init_hero(hero, current_level);
+    
+    // Initialize game state arrays
+    for ( int i = 0; i < 8; i++ ) {
+      shots_right[i] = 0;
+      shots_left[i] = 0;
+      shots_up[i] = 0;
+      shots_down[i] = 0;
+      shots_all[i] = 0;
+      enemy_shots_right[i] = 0;
+      enemy_shots_left[i] = 0;
+      enemy_shots_up[i] = 0;
+      enemy_shots_down[i] = 0;
+      enemy_shots_all[i] = 0;
+    }
+    
+    game_state = PLAY;
+  }
+  else if ( game_state == OVER || game_state == ENDED ) {
             for( int i=0; i<8; i++ ){
               // Light a LED
               pinMode( rows[i], OUTPUT );
@@ -456,17 +528,31 @@ void turn_on_columns(int row, int duration, boolean reverse) {
 }
 
 // Load initial position of the hero in the array passed as argument
-void init_hero(int buf[]) {
-  buf[0] = B00000000;
-  buf[1] = B00000000;
-  buf[2] = B00000000;
-  buf[3] = B00000000;
-  buf[4] = B00000000;
-  buf[5] = B00000000;
-  buf[6] = B00000000;
-  buf[7] = B00000001;
-  
-  hero_row = 7;
+void init_hero(int buf[], int level) {
+  if ( level == 0 ) {
+    buf[0] = B00000000;
+    buf[1] = B00000000;
+    buf[2] = B00000000;
+    buf[3] = B00000000;
+    buf[4] = B00000000;
+    buf[5] = B00000000;
+    buf[6] = B00000000;
+    buf[7] = B00000001;
+    
+    hero_row = 7;
+  }
+  else if ( level == 1 ) {
+        buf[0] = B00000000;
+    buf[1] = B00000000;
+    buf[2] = B00000000;
+    buf[3] = B00000000;
+    buf[4] = B00000000;
+    buf[5] = B00000000;
+    buf[6] = B00000010;
+    buf[7] = B00000000;
+    
+    hero_row = 6;
+  }
 }
 
 void load_shots_buffers( int buf[] ) {
