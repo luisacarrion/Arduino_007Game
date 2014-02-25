@@ -2,21 +2,22 @@
 /*
   
   Project 1
-  Student: Maria Luisa Carrion
+  Student: Maria Luisa Carrion (mcarrion)
   
-  Objective: display OK in the LED matrix.
+  Title of the Game: 007 - Special Agent
+  Goal of the Game: Move your character to the end of the room (indicated by the blinking light). While you get there, avoid being shot by your enemies (you can also shoot your enemies).
   
   ---------------------------------------------------------------------------------------------------------------------------------
   
   ACKNOWLEDGEMENTS:
-    - Eiji Hayashi's code (http://www.cs.cmu.edu/~ehayashi/projects/lasercommand/) was used as an example for building this project.
+    - Eiji Hayashi's code was used as an example for building this project: http://www.cs.cmu.edu/~ehayashi/projects/lasercommand/
     - The code for the scrolling text was found here: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt
     - The operations for reverting bits was found in  Bit Twiddling Hacks, By Sean Eron Anderson: http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64BitsDiv
   
   ---------------------------------------------------------------------------------------------------------------------------------
 
-  LED matrix:
-    - Placed in breadboard slots: from row 33 to row 40.
+  Description of the LED matrix location on the breadboard:
+    - LED matrix was placed in breadboard slots: from row 33 to row 40.
 
   ---------------------------------------------------------------------------------------------------------------------------------
   
@@ -54,54 +55,59 @@
 */
 /*========================================================*/
 
+
+// Include library for the _delay_us(duration) function
 #include <avr/delay.h>
 
-// Set the pins of the rows and columns
-const int rows[8] = { 14, 15, 16, 17, 18, 19, 11, 12 };
-const int cols[8] = { 2, 3, 4, 5, 6, 7, 8, 9 };
-const int pinX = A7;                               // Input pin for the joystick x coordinate
-const int pinY = A6;                               // Input pin for the joystick y coordinate
-const int pinS = 10;                               // Input pin for the switch
+
+// Set the pins of input/output devices
+const int rows[8] = { 14, 15, 16, 17, 18, 19, 11, 12 };  // Pins of the rows
+const int cols[8] = { 2, 3, 4, 5, 6, 7, 8, 9 };          // Pins of the columns
+const int pinX = A7;                                     // Input pin for the joystick's x coordinate
+const int pinY = A6;                                     // Input pin for the joystick's y coordinate
+const int pinS = 10;                                     // Input pin for the switch
+
 
 // Control variables
-const int PLAY = 0;
-const int OVER = 1;
-const int CLEARED = 2;
-const int ENDED = 3;
+const int PLAY = 0;                                // Game status constant
+const int OVER = 1;                                // Game status constant
+const int CLEARED = 2;                             // Game status constant
+const int ENDED = 3;                               // Game status constant
+int     game_state = OVER;                         // Holds the current state of the game
 int     current_level = 0;                         // Current level being played
-int     lives = 3;
+int     lives = 3;                                 // Current number of lives the player has for the current level
 int     hero_row = 0;                              // Row in which the hero is currently located inside the hero[] buffer
 long    base_time_input = 0;                       // Time at which the loop for reading the input begins. This is updated everytime the desired target time is achieved.
 long    base_time_shots = 0;                       // Time at which the loop for updating the shots begins. This is updated everytime the desired target time is achieved.
 long    base_time_enemies = 0;                     // Base time for updating the enemies movement
-long    base_time_stage_end = 0;                   // Base time for turning on/off the stage goal or end
+long    base_time_stage_end = 0;                   // Base time for turning on/off the blinking light that indicates the end of the level
 int     target_time_input = 100;                   // Desired target time for reading the input in mili seconds
 int     target_time_shots = 100;                   // Desired target time for updating the shots in mili seconds
-int     target_time_enemies = 1000;
-int     target_time_stage_end = 800;
-int     stage_end_status = 1;                      // 1 means on; 0 means off.
-boolean unpressed = true;                          // Tells if the switch has been disconnected
-boolean enemies_to_right[8] = { true, true, true, true, true, true, true, true };                   // Tells if the enemies should keep moving to the right or not. There is one for each row of the enemies_left_right buffer
-int game_state = OVER;
+int     target_time_enemies = 1000;                // Desired target time for updating the enemies movement
+int     target_time_stage_end = 800;               // Desired target time for turning on/off the blinking light that indicates the end of the level
+int     stage_end_status = 1;                      // Holds current on/off the status of the blinking light that indicates the end of the level. 1 means on; 0 means off.
+boolean unpressed = true;                          // Tells if the player has stopped pressing the switch
+boolean enemies_to_right[8] = { true, true, true, true, true, true, true, true }; // Tells if the enemies should keep moving to the right or not. There is one for each row of the enemies_left_right buffer
+
 
 // Image buffers
-int hero[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };          // Contains the position of the hero
-int shots_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };   // Contains all the shots going to the right
-int shots_left[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going to the left
-int shots_up[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };      // Contains all the shots going up
-int shots_down[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going down
-int shots_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };     // Contains all the shots
-int enemy_shots_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };   // Contains all the shots going to the right
-int enemy_shots_left[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going to the left
-int enemy_shots_up[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };      // Contains all the shots going up
-int enemy_shots_down[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going down
-int enemy_shots_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };     // Contains all the shots
-int stage_ends_row[] = { 0, 0 };                            // Indicates in which row the stage end row is located
-int stage_ends[] = {      
+int hero[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };                // Contains the position of the hero
+int shots_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };         // Contains all the shots going to the right (made by the hero)
+int shots_left[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };          // Contains all the shots going to the left (made by the hero)
+int shots_up[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };            // Contains all the shots going up (made by the hero)
+int shots_down[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };          // Contains all the shots going down (made by the hero)
+int shots_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };           // Contains all the shots (made by the hero)
+int enemy_shots_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };   // Contains all the shots going to the right (made by the enemies)
+int enemy_shots_left[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going to the left (made by the enemies)
+int enemy_shots_up[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };      // Contains all the shots going up (made by the enemies)
+int enemy_shots_down[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };    // Contains all the shots going down (made by the enemies)
+int enemy_shots_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };     // Contains all the shots (made by the enemies)
+int stage_ends_row[] = { 0, 0 };                         // Indicates in which row the stage end row is located (each element of the array corresponds to one level of the game)
+int stage_ends[] = {                                     // Contains the location of the level's end (the blinking light). This, in conjuction with the stage_end_row allows the game to determine where to display the blinking linght in the matrix
     B00000001,
     B00000001
   };
-int lvl0[] = {                                     // Contains the scenario for level 0
+int lvl0[] = {                                           // Contains the scenario for level 0
     B00000000,
     B00000000,
     B00011111,
@@ -111,7 +117,7 @@ int lvl0[] = {                                     // Contains the scenario for 
     B00010000,
     B00011000
   };
-int lvl1[] = {                                     // Contains the scenario for level 0
+int lvl1[] = {                                           // Contains the scenario for level 1
     B00000000,
     B00011111,
     B00000000,
@@ -123,35 +129,22 @@ int lvl1[] = {                                     // Contains the scenario for 
   };
 
 int* stages[8] = { lvl0, lvl1 };                         // Contains all the scenarios for the levels  
-int enemies_left_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-int enemies_all[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+int enemies_left_right[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };  // Contains all the enemies that move to the left or to the right
 
 
-
-// Code for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
-//An array holding the powers of 2 these are used as bit masks when calculating what to display
-const int powers[] = {1,2,4,8,16,32,64,128};
-int speed = 15; //number of times to repeat each frame
-int pauseDelay = 500;  //microseconds to leave each row  on before moving to the next
-
-char requestString[] = " ARST07 ";  //The string to display
-                                           //to change the message in code you right yourself simply 
-                                           //change this data and reset index and offset to 0
-//Variables used for scrolling (both start at 0
-int index = 0;  //this is the current charachter in the string being displayed
-int offset = 0; //this is how many columns it is offset by
-//Constants defining each charachters position in an array of integer arrays
-//Letters
+// Control variables for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt ). The comments found in the source code have been copied here as well
+const int powers[] = {1,2,4,8,16,32,64,128};            // An array holding the powers of 2 these are used as bit masks when calculating what to display
+int speed = 15;                                         // number of times to repeat each frame
+int pauseDelay = 500;                                   // microseconds to leave each row  on before moving to the next
+char requestString[] = " ARST07 ";                      // The string to display. Each letter of the displayed message does not correspond to one letter, since I wanted to display the message in a special format. That's why the actual string doesn't matter so much. I just used these letters to hold the message I wanted to show.
+int index = 0;                                          // this is the current charachter in the string being displayed
+int offset = 0;                                         // this is how many columns it is offset by
+// Constants defining each charachters position in an array of integer arrays
 const int A = 0;  const int R = 1; const int S = 2; const int T = 3; const int ZERO = 4;
 const int SEVEN = 5; const int PISTOL = 6; const int SPACE = 7;
-
-//The array used to hold a bitmap of the display 
-//(if you wish to do something other than scrolling marque change the data in this
-//variable then display)
+// The array used to hold a bitmap of the display 
 byte data[] = {0,0,0,0,0,0,0,0};        
-
-//The alphabet
-//Each Charachter is an 8 x 7 bitmap where 1 is on and 0 if off
+// Arrays that contain the message to be displayed. Each letter of the displayed message does not correspond to one array, since I wanted to display the message in a special format. I put up to two different lettes in one array
 const int _A[] = {B00000000,
                   B00110011,
                   B01010101,
@@ -223,18 +216,18 @@ const int __[] = {B0000000,
                   B0000000,
                   B0000000,
                   B0000000};
-//Load the bitmap charachters into an array (each charachters position corresponds to its previously defined index (ie _A (a's bitmap) 
-//is at index 0 and A = 0 so letters[A] will return the 'A' bitmap)
-const int* letters[] = {_A,_R,_S,_T, _0, _7, _PISTOL,__};
 
+const int* letters[] = {_A,_R,_S,_T, _0, _7, _PISTOL,__}; //Load the bitmap charachters into an array (each charachters position corresponds to its previously defined index (ie _A (a's bitmap) is at index 0 and A = 0 so letters[A] will return the 'A' bitmap)
 // End of Code for the scrolling text
 
 
-// Initializization code
+
+
+/* Initializization code */
 void setup() {
   
   // open the serial port at 9600 bps:
-  Serial.begin(9600); 
+  //Serial.begin(9600); 
   //Serial.println( 2, BIN);
   
   // Turn off all the LEDs
@@ -249,14 +242,13 @@ void setup() {
   init_hero(hero, current_level);
   // Load initial position of enemies
   init_enemies_left_right(enemies_left_right, current_level);
-
   // Set the base time for the first time we enter the loop
   base_time_input = base_time_shots = base_time_enemies = base_time_stage_end = millis();  
 }
 
 
 
-/* Main routine (called repeated by from the Arduino framework) */
+/* Main routine (called repeated by the Arduino framework) */
 void loop() {
 
   if ( game_state == PLAY ) {
@@ -268,7 +260,6 @@ void loop() {
               // Read input from the joystick 
               int valX = analogRead(pinX);  
               int valY = analogRead(pinY);
-              //Serial.println( valY );
               
               // Move left or right
               if ( !( hero[hero_row] == B10000000 ) && valX < 450 && !( stages[current_level][hero_row] &  hero[hero_row] << 1 ) ) {        // Check if the hero is in the left border of the screen, if X is for the left and if there is collision
@@ -321,7 +312,9 @@ void loop() {
             } // End of Read input
           
           
+            // Load all the shots made by the hero (which are saved in 4 different arrays) in a single array (to make the lighting of rows more efficient)
             load_shots_buffers( shots_all );
+            // Load all the shots made by the enemies (which are saved in 4 different arrays) in a single array (to make the lighting of rows more efficient)
             load_enemy_shots_buffers( enemy_shots_all );
           
               
@@ -337,7 +330,7 @@ void loop() {
                 turn_on_columns(stages[current_level][row], 100, true);
               }
               
-              // Show the content of the stage for 100 microseconds if that row has content
+              // Show the content of the enemies for 100 microseconds if that row has content
               if (enemies_left_right[row]) { 
                 turn_on_columns(enemies_left_right[row], 100, true);
               }
@@ -346,15 +339,14 @@ void loop() {
               if (shots_all[row]) { 
                 turn_on_columns(shots_all[row], 250, true);
               }   
-              
-              
+                         
               // Show the content of the hero buffer
               if ( row == hero_row ) {
                 turn_on_columns(hero[hero_row], 3250, true);
               }
               
              // Make enemies shoot
-               // If the hero is in the indicated direction
+               // Identify if the hero is above, below, to the right or to left of the enemy that is in the current row
                 int hero_up = ( hero_row < row ) && ( enemies_left_right[row] & hero[hero_row] );
                 int hero_down = ( hero_row > row ) && ( enemies_left_right[row] & hero[hero_row] );
                 int hero_right = ( hero_row == row ) && ( enemies_left_right[row] > hero[hero_row] );
@@ -365,11 +357,12 @@ void loop() {
                   enemy_shots_right[row] |= (enemies_left_right[row] >> 1);                                                  //   This gives us 1s for the places where collision happens, so we XOR these result with the bullet itself ( hero[hero_row] >> 1 ), 
                                                                                                                    //   to know if this particular bullet will cause a collision
                 }
-                // Shoot to the left, if there is not a wall to the left
+                // Shoot to the left, if the hero is at the left, if there is not already a shot in that direction and if there is not a wall to the left
                 if ( hero_left && !( enemy_shots_left[row] ) && ( ( ( (enemies_left_right[row] << 1) & B11111111 ) & stages[current_level][row] ) ^ ( (enemies_left_right[row] << 1) & B11111111 ) ) ) {
                   enemy_shots_left[row] |= (enemies_left_right[row] << 1) & B11111111; 
                 }
                 
+                // Identify if there is an existing enemy shot going up or going down
                 int shots_up_exist = 0;
                 int shots_down_exist = 0;
                 // See if there is an existing shot up or down, going towards the hero
@@ -382,11 +375,11 @@ void loop() {
                   }
                 }
                 
-                // Shoot up, , if there is not a wall above
+                // Shoot up
                 if ( hero_up && !( shots_up_exist ) && ( !( row == 0 ) && ( ( enemies_left_right[row] & stages[current_level][row - 1] ) ^ enemies_left_right[row] ) ) ) {
                   enemy_shots_up[row - 1] |= enemies_left_right[row];
                 }
-                // Shoot down, if there is not a wall below
+                // Shoot down
                 if ( hero_down && !( shots_down_exist ) && ( !( row == 7 ) && ( ( enemies_left_right[row] & stages[current_level][row + 1] ) ^ enemies_left_right[row] ) ) ) {
                   enemy_shots_down[row + 1] |= enemies_left_right[row];
                 }
@@ -399,7 +392,7 @@ void loop() {
               // Manage timer and status for the blinking light that indicates the end of the stage
               if ( ( millis() - base_time_stage_end ) >= target_time_stage_end ) {
                 base_time_stage_end = millis();
-                stage_end_status = ~stage_end_status;
+                stage_end_status = ~stage_end_status;  // Assign new status of the blinking light that indicates the end of the stage
               }
               
               // Show blinking light that indicates the end of the stage
@@ -410,10 +403,10 @@ void loop() {
               // Turn off the row 
               pinMode( rows[row], INPUT );
               
-              // Check if it kills an enemy
-              int hits = enemies_left_right[row] & shots_right[row];                      // find the enemies hit 
-              enemies_left_right[row] = hits ^ enemies_left_right[row];    // keep only those not hit
-              shots_right[row] = hits ^ shots_right[row];
+              // Check if the herro kills an enemy. If an enemy has been hit, that enemy is removed from the enemies buffer
+              int hits = enemies_left_right[row] & shots_right[row];       // find the enemies hit 
+              enemies_left_right[row] = hits ^ enemies_left_right[row];    // keep only the enemies that were not hit
+              shots_right[row] = hits ^ shots_right[row];                  // keep only the hero shots that didn't hit an enemy
               
               hits = enemies_left_right[row] & shots_left[row];
               enemies_left_right[row] = hits ^ enemies_left_right[row];
@@ -427,11 +420,11 @@ void loop() {
               enemies_left_right[row] = hits ^ enemies_left_right[row];
               shots_down[row] = hits ^ shots_down[row];
               
-            }
+            }  // End of Show the content of the image buffers in the LED matrix
             
             
           
-            // Update shots
+            // Update shots (so they keep moving forward until they leave the stage or hit a wall)
             if ( millis() - base_time_shots >= target_time_shots ) {      
               base_time_shots = millis();
               
@@ -472,9 +465,9 @@ void loop() {
               
               }
               
-            } 
+            }
             
-            // Update enemies
+            // Update enemies (so they keep moving to the left/right until they hit a wall)
             if ( millis() - base_time_enemies >= target_time_enemies ) {
               base_time_enemies = millis();
               
@@ -509,13 +502,7 @@ void loop() {
                     }
                   }
                 }
-                
-                
-            
-                
-                
-                
-                
+                  
               }
             }
             
@@ -529,10 +516,12 @@ void loop() {
                 game_state = ENDED;
               }
             }
-            // If the hero touches an enemy, or is hit by an enemy shot, it's game over
+            // If the hero touches an enemy, or is hit by an enemy shot, and he has no more lives, then it's game over
             else if ( ( hero[hero_row] & enemies_left_right[hero_row] ) || ( enemy_shots_all[hero_row] & hero[hero_row] ) ) {
               if ( lives > 0 ) {
                 lives--;
+                
+                // Restart the hero and enemies position, so the level starts again
                 init_hero(hero, current_level);
                 init_enemies_left_right(enemies_left_right, current_level);
     
@@ -558,6 +547,7 @@ void loop() {
 
   }
   else if ( game_state == CLEARED ) {
+    // Initialize the next level
     lives = 3;
     current_level++;
     init_hero(hero, current_level);
@@ -581,39 +571,14 @@ void loop() {
   }
   else if ( game_state == OVER || game_state == ENDED ) {
     
+    //Show scrolling text
     loadSprite();
     showSprite(speed);
     
-
-      
-//    for( int i=0; i<8; i++ ){
-//      // Light a LED
-//      pinMode( rows[i], OUTPUT );
-//      digitalWrite( rows[i], LOW);
-//      digitalWrite( cols[i], HIGH);
-//      delay(100);
-//      // Turn the LED off
-//      digitalWrite( cols[i], LOW );
-//      pinMode( rows[i], INPUT );
-//      
-//      // Read input from the switch
-//      int valS = digitalRead(pinS);
-//      
-//      // Start game when switch is pressed
-//      if ( valS == HIGH ) {
-//        game_state = PLAY;
-//        break;
-//      }
-//    }
-    
-
-             
   }
  
   
 }  // end loop()
-
-
 
 
 
@@ -659,6 +624,7 @@ void init_hero(int buf[], int level) {
   }
 }
 
+// Load initial positions of the enemies for the current level
 void init_enemies_left_right(int buf[], int level) {
   if ( level == 0 ) {
     buf[0] = B00000000;
@@ -682,6 +648,7 @@ void init_enemies_left_right(int buf[], int level) {
   }
 }
 
+// Integrate all the hero's shots in a single array
 void load_shots_buffers( int buf[] ) {
   buf[0] = ( ( shots_right[0] | shots_left[0] ) | shots_up[0] ) | shots_down[0];
   buf[1] = ( ( shots_right[1] | shots_left[1] ) | shots_up[1] ) | shots_down[1];
@@ -693,6 +660,7 @@ void load_shots_buffers( int buf[] ) {
   buf[7] = ( ( shots_right[7] | shots_left[7] ) | shots_up[7] ) | shots_down[7];
 }
 
+// Integrate all the enemies's shots in a single array
 void load_enemy_shots_buffers( int buf[] ) {
   buf[0] = ( ( enemy_shots_right[0] | enemy_shots_left[0] ) | enemy_shots_up[0] ) | enemy_shots_down[0];
   buf[1] = ( ( enemy_shots_right[1] | enemy_shots_left[1] ) | enemy_shots_up[1] ) | enemy_shots_down[1];
@@ -704,6 +672,7 @@ void load_enemy_shots_buffers( int buf[] ) {
   buf[7] = ( ( enemy_shots_right[7] | enemy_shots_left[7] ) | enemy_shots_up[7] ) | enemy_shots_down[7];
 }
 
+// Function to toggle the bits (not being used in the game)
 void toggle(int buf[]) {
   buf[0] = buf[0] ^ B11111111;
   buf[1] = buf[1] ^ B11111111;
@@ -716,7 +685,7 @@ void toggle(int buf[]) {
 }
 
 
-// Code for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
+// Functions for the scrolling text (found at: http://oomlout.com/8X8M/8X8M-ScrollMessage.txt )
 
 //Loads the current scroll state frame into the data[] display array
 void loadSprite(){
@@ -734,6 +703,7 @@ void loadSprite(){
   if(offset==8){offset = 0; index++; if(index==sizeof(requestString)-2){index=0;}}         //if offset is 8 load the next charachter pair for the next time through
 }
 
+// Show the contents of the data[] buffer for the scrolling text
 void showSprite(int speed2){  
   for(int iii = 0; iii < speed2; iii++){
     for( int row = 0; row < 8; row++ ){
@@ -757,86 +727,26 @@ void showSprite(int speed2){
     
     }
   }
-  
-  //    for( int i=0; i<8; i++ ){
-//      // Light a LED
-//      pinMode( rows[i], OUTPUT );
-//      digitalWrite( rows[i], LOW);
-//      digitalWrite( cols[i], HIGH);
-//      delay(100);
-//      // Turn the LED off
-//      digitalWrite( cols[i], LOW );
-//      pinMode( rows[i], INPUT );
-//      
-//      // Read input from the switch
-//      int valS = digitalRead(pinS);
-//      
-//      // Start game when switch is pressed
-//      if ( valS == HIGH ) {
-//        game_state = PLAY;
-//        break;
-//      }
-//    }
-  
-  
-//  
-// for(int iii = 0; iii < speed2; iii++){                 //show the current frame speed2 times
-//    for(int column = 0; column < 8; column++){            //iterate through each column
-//    
-//       // Turn on the column
-//       
-//       
-//        
-//       for(int i = 0; i < 8; i++){           
-//           pinMode( rows[i], OUTPUT );     
-//           digitalWrite(rows[i], LOW);                      //turn off all row pins  
-//       }
-//       
-//       for(int i = 0; i < 8; i++) { //Set only the one pin
-//         //turns the current column on
-//         if ( i == column ) {     
-//           digitalWrite(cols[i], LOW);
-//         }  
-//         //turns the rest of the rows off
-//         else {                
-//           digitalWrite(colA[i], HIGH); 
-//         }
-//       }
-//    
-//       for(int row = 0; row < 8; row++){                    //iterate through each pixel in the current column
-//          int bit = (data[column] >> row) & 1;
-//          if ( bit == 1 ) { 
-//             digitalWrite(rowA[row], HIGH);                   //if the bit in the data array is set turn the LED on
-//          }
-//       }
-//       
-//       delayMicroseconds(pauseDelay);                       //leave the column on for pauseDelay microseconds (too high a delay causes flicker)
-//    }
-// }
 }
 
 //returns the index of a given charachter
-//for converting from a string to a lookup in our array of charachter bitmaps
+//for converting from a string to a lookup in our array of character bitmaps
 int getChar(char charachter){
- int returnValue = ZERO;
- switch(charachter){
-  case 'A': returnValue = A; break;
-  case 'a': returnValue = A; break;
-  case 'R': returnValue = R; break;
-  case 'r': returnValue = R; break;
-  case 'S': returnValue = S; break;
-  case 's': returnValue = S; break;
-  case 'T': returnValue = T; break;
-  case 't': returnValue = T; break;
-  case '0': returnValue = ZERO; break;
-  case '7': returnValue = SEVEN; break;
-  case '>': returnValue = PISTOL; break;
-  case ' ': returnValue = SPACE; break;
-   
+   int returnValue = ZERO;
+   switch(charachter){
+      case 'A': returnValue = A; break;
+      case 'a': returnValue = A; break;
+      case 'R': returnValue = R; break;
+      case 'r': returnValue = R; break;
+      case 'S': returnValue = S; break;
+      case 's': returnValue = S; break;
+      case 'T': returnValue = T; break;
+      case 't': returnValue = T; break;
+      case '0': returnValue = ZERO; break;
+      case '7': returnValue = SEVEN; break;
+      case '>': returnValue = PISTOL; break;
+      case ' ': returnValue = SPACE; break;  
   }
   return returnValue;
 }
-
-
-
-// End of Code for the scrolling text
+// End of Functions for the scrolling text
